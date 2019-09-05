@@ -4,11 +4,12 @@ Created on Tue 4 June 2019
 
 @author: Sandor Zoletnik and Mate Lampert
 
-This is the flap module for the NSTX mds archive
+This is the general flap module for MDSPlus archives.
 """
 import numpy as np
 import copy
 import configparser
+import fnmatch
 import io
 import pickle
 import os
@@ -29,7 +30,8 @@ class FlapEFITObject(dict):
         self[key] = value    
         
     def get_data(self, data_source, exp_id=None, options=None):
-        
+        default_options = {'Verbose': False}
+        _options = flap.config.merge_options(default_options,options,data_source='NSTX_GPI')
         try:
             efit_dictionary=flap.config.get_all_section('EFIT')
         except:
@@ -44,13 +46,13 @@ class FlapEFITObject(dict):
                                                    object_name=index)
                 except:
                     self[index]=None
-                    if (options['Verbose']):
+                    if (_options['Verbose']):
                         print("Couldn't read "+efit_dictionary[index]+ " for shot "+str(exp_id))
 
 def mds_virtual_names(data_name, exp_id, channel_config_file):
 
     """
-    Translates virtual data names to mdspluds entries.
+    Translates virtual data names to MDSPlus entries.
     Returns a list of virtual names and translated full names.
     The list is read from the configuration file. The file is a standard
     configuration file with one section [Virtual names]. Each entry looks
@@ -67,8 +69,8 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
     Return value:
         virt_names, mds_str, mds_names
         virt names is a list of the interpreted names.
-        mds_str is the mds description from the virtual name translation file
-        mds_names is a list of the same length as virt_names.
+        mds_str is the MDSPlus description from the virtual name translation file
+        mds_names is a list of the same length as virt_names. Elements can be the following:
         Elements can be the following:
             string: a single MDS+ name
             list: [<type>, <mds1>, <mds2>, ...]
@@ -92,8 +94,7 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
     config.optionxform = str
     read_ok = config.read(channel_config_file)
     if (read_ok == []):
-        raise OSError("Error reading mds virtual name file "
-                      + channel_config_file)
+        raise ValueError("Invalid MDSPlus virtual name file "+channel_config_file) 
     try:
         entries = config.items('Virtual names')
     except Exception as e:
@@ -163,9 +164,10 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
             mds_descr.append(descr)    
     return select_list, select_mds_list, mds_descr        
 
-def mds_get_data(exp_id=None, data_name=None, no_data=False, options=None, coordinates=None, data_source=None):
-    """ Data read function for the NSTX MDSplus database
-    exp_id: exp_id number, integer
+def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None, 
+                     coordinates=None, data_source=None):
+    """ Data read function for the MDSplus database
+    exp_id: exp_id number, integer or YYYYMMDD.xxx
     data_name: Channel names [\]tree::node
                or virtual names:
                    CR-x: Correlation reflectometry, x is antenna A,B,C,D
@@ -174,8 +176,10 @@ def mds_get_data(exp_id=None, data_name=None, no_data=False, options=None, coord
                      'Sample': The read samples
                      'Time': The read times
                      Only a single equidistant range is interpreted in c_range.
-    options: Dictionary. Defaults will be read from the MDSPlus section in configuration file.
-            'Server': Server name (default:None)
+    options: Dictionary. Defaults will be read from <data_source> section in configuration file.
+            'Protocol': For ssh connection use 'ssh://'.
+            'Server': Server name (default: mds-trm-1.ipp-hgw.mpg.de)
+            'User': User name for access. Password-free access should be set up for this user.
             'Virtual name file': A file name to translate virtual names to MDS+ entries. For 
                                  format see mds_virtual_names()
             'Verbose': (bool) Write progress information during data read.
@@ -195,19 +199,39 @@ def mds_get_data(exp_id=None, data_name=None, no_data=False, options=None, coord
                        }
     
     _options = flap.config.merge_options(default_options,options,data_source=data_source)
+    if (data_source is None):
+        data_source = 'MDSPlus'
+        
     if (exp_id is None):
-        raise ValueError("exp_id must be set for reading data from mds.")
+        raise ValueError('exp_id should be set for MDSPlus.')
+    if (type(exp_id) == int):
+        exp_id_mds = exp_id
     if (type(exp_id) is str):       #This is for w7X, could be changed to find and option in the config file
         exp_id_split = exp_id.split('.')
         if ((len(exp_id_split) is not 2) or (len(exp_id_split[0]) != 8) or (len(exp_id_split[1]) != 3)):
             raise ValueError("exp_id format error: must be a string YYYYMMDD.nnn")
             exp_id_mds = int(exp_id_split[0][2:] + exp_id_split[1])
-    else:   
-        if (type(exp_id) is not int):
-            raise TypeError("exp_id must be an integer or string")
-            
+    elif (type(exp_id) is not int):
+        raise TypeError("exp_id must be an integer or string")
+
+    if (_options['Server'] is None):
+        raise ValueError("Option 'Server' should be set for using MDSPlus.")                    
+    #if no username and protocol then open a server (e.g. NSTX or KSTAR)
+    if ((_options['Protocol'] is None) and (_options['User'] is None)):
+        connection_name = _options['Server']
+        
+    #if protocol and username exists then use the following syntax (e.g. W7-X)
+    if ((_options['Protocol'] is not None) and (_options['User'] is not None)):
+        connection_name = _options['Protocol'] + _options['User'] + '@' + _options['Server']
+        
+    #Error handing if one of the parameters is not set.
+    if (((_options['Protocol'] is not None) and (_options['User'] is None)) or
+       ((_options['Protocol'] is None) and (_options['User'] is not None))):
+        raise ValueError("If Protocol is set then Username must be set, as well.")
+    
     if ((type(data_name) is not str) and (type(data_name) is not list)):
         raise ValueError("data_name should be a string or list of strings.")
+        
     if (_options['Virtual name file'] is not None):
         try:
             virt_names, virt_mds_txt, virt_mds = mds_virtual_names(data_name, exp_id, _options['Virtual name file'])
@@ -233,20 +257,17 @@ def mds_get_data(exp_id=None, data_name=None, no_data=False, options=None, coord
                 else:
                     raise NotImplementedError("Non-equidistant Time axis is not implemented yet.")
                 break
-            
-    #if no username and protocol then open a server (e.g. NSTX or KSTAR)
-    if ((_options['Protocol'] is None) and (_options['User'] is None)):
-        connection_name = _options['Server']
-        
-    #if protocol and username exists then use the following syntax (e.g. W7-X)
-    if ((_options['Protocol'] is not None) and (_options['User'] is not None)):
-        connection_name = _options['Protocol'] + _options['User'] + '@' + _options['Server']
-        
-    #Error handing if one of the parameters is not set.
-    if (((_options['Protocol'] is not None) and (_options['User'] is None)) or
-       ((_options['Protocol'] is None) and (_options['User'] is not None))):
-        raise ValueError("If Protocol is set then Username must be set, as well.")
-    
+                if (coord.unit.unit == 'Millisecond'):
+                    read_range = [read_range[0]*1e-3, read_range[1]*1e-3]
+                elif (coord.unit.unit == 'Microsecond'):
+                    read_range = [read_range[0]*1e-6, read_range[1]*1e-6]
+                elif (coord.unit.unit == 'Nanosecond'):
+                    read_range = [read_range[0]*1e-9, read_range[1]*1e-9]
+                elif (coord.uni.unit == 'Second'):
+                    pass
+                else:
+                    raise ValueError("Unknown time unit '"+coord.unit.unit+"'. Valid: Second, Millisecond, Microsecond, Nanosecond.")
+
     signal_list = []
     data_list = []
     common_time = None    
@@ -324,13 +345,13 @@ def mds_get_data(exp_id=None, data_name=None, no_data=False, options=None, coord
                     except Exception as e:
                         raise e
                     try:
-                        conn.openTree(tree_name,exp_id)
+                        conn.openTree(tree_name,exp_id_mds)
                     except mds.MdsException as e:
                         raise RuntimeError("Error connecting to tree {:s}, experiment {:s}".format(tree_name,str(exp_id))) 
                 if (_options['Verbose']):
                     print("Reading "+node_name)
                 try:
-                    mdsdata = conn.get(node_name).data()
+                    mdsdata = conn.get(node_name).data() # NEEDS TO BE CHECKED IF IT WORKS FOR W7-X
                     mdsdata_unit = conn.get('units('+node_name+')').data()
                     mdsdata_spat=[]
                     mdsdata_spat_unit=[]
@@ -521,9 +542,8 @@ def mds_get_data(exp_id=None, data_name=None, no_data=False, options=None, coord
 
 def add_coordinate(data_object, coordinates, options=None):
 
-    # getting the dimension of the channel coordinate, this should be the same as the spatial coordinate
     raise NotImplementedError("Not implemented.")
 
 def register(data_source):
-    flap.register_data_source(data_source, get_data_func=mds_get_data,
+    flap.register_data_source(data_source, get_data_func=mdsplus_get_data,
                               add_coord_func=add_coordinate)
