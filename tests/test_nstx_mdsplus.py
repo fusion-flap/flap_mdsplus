@@ -2,7 +2,7 @@
 """
 Created on Tue Jun  4 09:37:34 2019
 
-@author: Sandor Zoletnik  (zoletnik.sandor@wigner.mta.hu)
+@author: Mate Lampert  (mlampert@pppl.gov)
 
 Test program for NSTX MDSPlus.
 
