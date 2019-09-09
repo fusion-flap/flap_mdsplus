@@ -9,7 +9,6 @@ This is the general flap module for MDSPlus archives.
 import numpy as np
 import copy
 import configparser
-import fnmatch
 import io
 import pickle
 import os
@@ -48,6 +47,11 @@ class FlapEFITObject(dict):
                     self[index]=None
                     if (_options['Verbose']):
                         print("Couldn't read "+efit_dictionary[index]+ " for shot "+str(exp_id))
+    def load(self, filename=None):
+        raise NotImplemented("Not implemented yet.")
+        
+    def save(self, filename=None):
+        raise NotImplemented("Not implemented yet.")
 
 def mds_virtual_names(data_name, exp_id, channel_config_file):
 
@@ -358,9 +362,13 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
                     for dim_ind in range(1,len(mdsdata.shape)):
                         mdsdata_spat.append(conn.get('dim_of('+node_name+','+str(dim_ind)+')').data())
                         mdsdata_spat_unit.append(conn.get('units(dim_of('+node_name+','+str(dim_ind)+'))').data())
+                        #print(conn.get('dim_of('+node_name+','+str(dim_ind)+')').data().shape)
                     mdsdata_time = conn.get('dim_of('+node_name+',0)').data()
                     mdsdata_time_unit = conn.get('units(dim_of('+node_name+'))').data()
-                    
+                    #print(np.asarray(mdsdata).shape,
+                    #      np.asarray(mdsdata_spat).shape,
+                    #      np.asarray(mdsdata_time).shape,
+                    #      mdsdata_spat)
                     if not (len(mdsdata_time) < 2):
                         mdsdata_time_step=mdsdata_time[1]-mdsdata_time[0]
                     else:
@@ -479,9 +487,13 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
                                                    shape = common_time.shape,
                                                    dimension_list=[0])
                                     ))
-    if (len(data.shape) > 1):
+    if ((len(data.shape) > 1) and (len(mdsdata_spat) > 2)):
         for dim_ind in range(0,len(data.shape)-1):
-            spatial_data=np.asarray(mdsdata_spat[dim_ind][0][:])
+            #print(np.asarray(mdsdata_spat).shape)
+            #print(mdsdata_spat)
+            #now only the zeroth time is gotten from the vector
+            spatial_data=np.asarray(mdsdata_spat[dim_ind][0][:]) 
+            
             if (((mdsdata_spat_unit[dim_ind] == 'm') or
                 (mdsdata_spat_unit[dim_ind] == 'mm')) and
                 (dim_ind < 3)):
@@ -494,7 +506,7 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
                                                                shape=spatial_data.shape,
                                                                dimension_list=[dim_ind+1])))
             else:
-                coord.append(copy.deepcopy(flap.Coordinate(name='Dimension '+str(dim_ind),
+                coord.append(copy.deepcopy(flap.Coordinate(name='Dimension '+str(1),
                                                                   unit=mdsdata_spat_unit[dim_ind],
                                                                   mode=flap.CoordinateMode(equidistant=False),
                                                                   values=spatial_data,
