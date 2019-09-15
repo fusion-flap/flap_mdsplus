@@ -47,12 +47,9 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
                   'complex': two MDS entries are expected (real, imag), compelx signal will be created from them.
         
     """
-    if (type(exp_id) is not str):
-        raise TypeError("exp_id should be string.")
-    try:
-        exp_id_num = int(exp_id[:8]+exp_id[9:])
-    except Exception as e:
-        raise ValueError("Invalid exp_id value: '{:s}".format(exp_id))
+    if (type(exp_id) is not int):
+        raise TypeError("exp_id should be integer for MDSPlus.")
+    exp_id_num = exp_id
         
     config = configparser.ConfigParser()
     config.optionxform = str
@@ -82,14 +79,14 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
                 exp_id_start = None
             else:
                 try:
-                    exp_id_start = int(exp_id_range[0][:8]+exp_id_range[0][9:])
+                    exp_id_start = int(exp_id_range[0])
                 except ValueError:
                     raise ValueError("Invalid expID start in entry '{:s}' in virtual name file: {:s}".format(e, channel_config_file))
             if (exp_id_range[1].strip() == ''):
                 exp_id_stop = None
             else:
                 try:
-                    exp_id_stop = int(exp_id_range[1][:8]+exp_id_range[1][9:])
+                    exp_id_stop = int(exp_id_range[1])
                 except ValueError:
                     raise ValueError("Invalid expID stop in entry '{:s}' in virtual name file: {:s}".format(e, channel_config_file))
             if ((exp_id_start is not None) and (exp_id_num < exp_id_start) or \
@@ -167,8 +164,9 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None, c
 
     if (exp_id is None):
         raise ValueError("exp_id must be set for reading data from MDSPlus.")
-    if (type(exp_id) is not str):
-        raise TypeError("exp_is must be a string with format YYYYMMDD.nnn")
+    if (type(exp_id) is not int):
+        raise TypeError("exp_is must be an integer for MDSPlus.")
+    exp_id_mds = exp_id
     
     if (_options['Server'] is None):
         raise ValueError("Option 'Server' should be set for using MDSPlus.")
