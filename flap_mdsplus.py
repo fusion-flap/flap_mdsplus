@@ -363,6 +363,7 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
                         mdsdata_spat.append(conn.get('dim_of('+node_name+','+str(dim_ind)+')').data())
                         mdsdata_spat_unit.append(conn.get('units(dim_of('+node_name+','+str(dim_ind)+'))').data())
                         #print(conn.get('dim_of('+node_name+','+str(dim_ind)+')').data().shape)
+                    
                     mdsdata_time = conn.get('dim_of('+node_name+',0)').data()
                     mdsdata_time_unit = conn.get('units(dim_of('+node_name+'))').data()
                     #print(np.asarray(mdsdata).shape,
@@ -373,7 +374,6 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
                         mdsdata_time_step=mdsdata_time[1]-mdsdata_time[0]
                     else:
                         mdsdata_time_step=0.
-
 #                    t = mdsdata_time*mdsdata_time_unit
 #                    ind = np.nonzero(np.logical_and(t > 4.4,t < 4.8))[0]
 #                    try:
@@ -415,7 +415,7 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
                     except Exception as e:
                         print("Warning: Cannot write cache file: "+filename)
                     break
-                          
+                
             if (read_range is not None):
                 read_ind = np.nonzero(np.logical_and(mdsdata_time * mdsdata_time_step >= read_range[0],
                                                      mdsdata_time * mdsdata_time_step <= read_range[1]
@@ -425,9 +425,6 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
                 mdsdata = mdsdata[read_ind]
             else:
                 read_ind = [0, len(mdsdata)]
-                #These lines are for NSTX and W7X
-                #This needs to be changed at some point to
-                #be able to handle ms, ns, ps data
             
             mdsdata_time_unit_int = time_unit_translation(mdsdata_time_unit)
             if (common_time is not None):
@@ -487,31 +484,28 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
                                                    shape = common_time.shape,
                                                    dimension_list=[0])
                                     ))
-    if ((len(data.shape) > 1) and (len(mdsdata_spat) > 2)):
+    if ((len(data.shape) > 1) and (len(np.asarray(mdsdata_spat).shape) > 2)):
         for dim_ind in range(0,len(data.shape)-1):
-            #print(np.asarray(mdsdata_spat).shape)
-            #print(mdsdata_spat)
             #now only the zeroth time is gotten from the vector
-            spatial_data=np.asarray(mdsdata_spat[dim_ind][0][:]) 
-            
+            spatial_data=np.asarray(mdsdata_spat[dim_ind][0][:])
             if (((mdsdata_spat_unit[dim_ind] == 'm') or
                 (mdsdata_spat_unit[dim_ind] == 'mm')) and
                 (dim_ind < 3)):
-                names=['Device R','Device Z']                           
+                names=['Device R','Device z']
         
-                coord.append(copy.deepcopy(flap.Coordinate(name=names[dim_ind-1],
-                                                               unit=mdsdata_spat_unit[dim_ind],
-                                                               mode=flap.CoordinateMode(equidistant=False),
-                                                               values=spatial_data,
-                                                               shape=spatial_data.shape,
-                                                               dimension_list=[dim_ind+1])))
+                coord.append(copy.deepcopy(flap.Coordinate(name=names[dim_ind],
+                                                           unit=mdsdata_spat_unit[dim_ind],
+                                                           mode=flap.CoordinateMode(equidistant=False),
+                                                           values=spatial_data,
+                                                           shape=spatial_data.shape,
+                                                           dimension_list=[dim_ind+1])))                                                           
             else:
-                coord.append(copy.deepcopy(flap.Coordinate(name='Dimension '+str(1),
-                                                                  unit=mdsdata_spat_unit[dim_ind],
-                                                                  mode=flap.CoordinateMode(equidistant=False),
-                                                                  values=spatial_data,
-                                                                  shape=spatial_data.shape,
-                                                                  dimension_list=[dim_ind+1])))
+                coord.append(copy.deepcopy(flap.Coordinate(name='Dimension '+str(dim_ind+1),
+                                                           unit=mdsdata_spat_unit[dim_ind],
+                                                           mode=flap.CoordinateMode(equidistant=False),
+                                                           values=spatial_data,
+                                                           shape=spatial_data.shape,
+                                                           dimension_list=[dim_ind+1])))
     coord.append(copy.deepcopy(flap.Coordinate(name='Sample',
                                                unit=mdsdata_unit,
                                                mode=flap.CoordinateMode(equidistant=True),
