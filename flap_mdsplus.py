@@ -83,17 +83,10 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
                   signal will be created from them.
 
     """
-    if ((type(exp_id) is not int) and (type(exp_id) is not str)):
-        raise TypeError("exp_id should be integer or string.")
-
-    if (type(exp_id) is str):
-        try:
-            exp_id_num = int(exp_id[:8]+exp_id[9:])
-        except Exception as e:
-            raise ValueError("Invalid exp_id value: '{:s}".format(exp_id))
-    if (type(exp_id) is int):
-        exp_id_num=exp_id
-  
+    if (type(exp_id) is not int):
+        raise TypeError("exp_id should be integer for MDSPlus.")
+    exp_id_num = exp_id
+        
     config = configparser.ConfigParser()
     config.optionxform = str
     read_ok = config.read(channel_config_file)
@@ -122,14 +115,14 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
                 exp_id_start = None
             else:
                 try:
-                    exp_id_start = int(exp_id_range[0][:8]+exp_id_range[0][9:])
+                    exp_id_start = int(exp_id_range[0])
                 except ValueError:
                     raise ValueError("Invalid exp_id start in entry '{:s}' in virtual name file: {:s}".format(e, channel_config_file))
             if (exp_id_range[1].strip() == ''):
                 exp_id_stop = None
             else:
                 try:
-                    exp_id_stop = int(exp_id_range[1][:8]+exp_id_range[1][9:])
+                    exp_id_stop = int(exp_id_range[1])
                 except ValueError:
                     raise ValueError("Invalid exp_id stop in entry '{:s}' in virtual name file: {:s}".format(e, channel_config_file))
             if ((exp_id_start is not None) and (exp_id_num < exp_id_start) or \
@@ -207,17 +200,11 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
         data_source = 'MDSPlus'
         
     if (exp_id is None):
-        raise ValueError('exp_id should be set for MDSPlus.')
-    if (type(exp_id) == int):
-        exp_id_mds = exp_id
-    if (type(exp_id) is str):       #This is for w7X, could be changed to find and option in the config file
-        exp_id_split = exp_id.split('.')
-        if ((len(exp_id_split) is not 2) or (len(exp_id_split[0]) != 8) or (len(exp_id_split[1]) != 3)):
-            raise ValueError("exp_id format error: must be a string YYYYMMDD.nnn")
-            exp_id_mds = int(exp_id_split[0][2:] + exp_id_split[1])
-    elif (type(exp_id) is not int):
-        raise TypeError("exp_id must be an integer or string")
-
+        raise ValueError("exp_id must be set for reading data from MDSPlus.")
+    if (type(exp_id) is not int):
+        raise TypeError("exp_is must be an integer for MDSPlus.")
+    exp_id_mds = exp_id
+    
     if (_options['Server'] is None):
         raise ValueError("Option 'Server' should be set for using MDSPlus.")                    
     #if no username and protocol then open a server (e.g. NSTX or KSTAR)
