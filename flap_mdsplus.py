@@ -16,7 +16,6 @@ import math
 import MDSplus as mds
 
 import flap
-from flap.tools import *
 
 class FlapEFITObject(dict):
     """
@@ -48,10 +47,10 @@ class FlapEFITObject(dict):
                     if (_options['Verbose']):
                         print("Couldn't read "+efit_dictionary[index]+ " for shot "+str(exp_id))
     def load(self, filename=None):
-        raise NotImplemented("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
         
     def save(self, filename=None):
-        raise NotImplemented("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
 
 def mds_virtual_names(data_name, exp_id, channel_config_file):
 
@@ -413,7 +412,7 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
             else:
                 read_ind = [0, len(mdsdata)]
             
-            mdsdata_time_unit_int = time_unit_translation(mdsdata_time_unit)
+            mdsdata_time_unit_int = flap.tools.time_unit_translation(mdsdata_time_unit)
             if (common_time is not None):
                 if ((len(common_time) != len(mdsdata_time) or \
                     (math.fabs(common_time_unit - mdsdata_time_step)) / common_time_unit > 0.001) or \

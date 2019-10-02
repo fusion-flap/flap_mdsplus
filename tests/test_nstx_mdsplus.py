@@ -42,7 +42,7 @@ def test_mdsplus():
        #                 object_name='TEST_MDS'
        #                 )
        d=flap.get_data('NSTX_MDSPlus',
-                        name='\EFIT01::\Rlim',
+                        name='\EFIT01::\PSIRZ',
                         exp_id=141399,
                         object_name='TEST_MDS'
                         )
@@ -54,8 +54,8 @@ def test_mdsplus():
        #print(d.data.shape)
     except Exception as e:
         raise e
-    #flap.plot('TEST_MDS',plot_type='animation',axes=['Device R','Device Z','Time'],options={'Z range':[0,0.05],'Wait':0.0,'Clear':False})
-    flap.plot('TEST_MDS',plot_type='contour',axes=['Time','Dimension 1'],options={})
+    flap.plot('TEST_MDS',plot_type='animation',axes=['Device R','Device z','Time'],options={'Z range':[0,0.05],'Wait':0.0,'Clear':False})
+    #flap.plot('TEST_MDS',plot_type='contour',axes=['Time','Dimension 1'],options={})
     #flap.plot('TEST_MDS')
     flap.list_data_objects()
 
@@ -79,5 +79,5 @@ thisdir = os.path.dirname(os.path.realpath(__file__))
 fn = os.path.join(thisdir,"test_nstx_mdsplus.cfg")
 flap.config.read(file_name=fn)
 
-#test_mdsplus()
-test_mdsplus_efit()
+test_mdsplus()
+#test_mdsplus_efit()
