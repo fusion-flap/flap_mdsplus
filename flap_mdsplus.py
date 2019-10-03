@@ -224,6 +224,8 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
         
     if (_options['Virtual name file'] is not None):
         try:
+            if _options['Virtual name file'] == 'self':
+                _options['Virtual name file'] = flap.config.__flap_config.file_name
             virt_names, virt_mds_txt, virt_mds = mds_virtual_names(data_name, exp_id, _options['Virtual name file'])
         except Exception as e:
             raise e
