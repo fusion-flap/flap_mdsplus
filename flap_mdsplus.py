@@ -414,7 +414,10 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
             else:
                 read_ind = [0, len(mdsdata)]
             
-            mdsdata_time_unit_int = flap.tools.time_unit_translation(mdsdata_time_unit)
+            mdsdata_time_unit_int = flap.tools.time_unit_translation(mdsdata_time_unit, max_value=mdsdata_time.max())
+            if (mdsdata_time_unit ==' ') or (mdsdata_time_unit is None):
+                mdsdata_time_unit = 's'
+                
             if (common_time is not None):
                 if ((len(common_time) != len(mdsdata_time) or \
                     (math.fabs(common_time_unit - mdsdata_time_step)) / common_time_unit > 0.001) or \
