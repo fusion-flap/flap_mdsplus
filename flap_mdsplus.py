@@ -537,6 +537,6 @@ def add_coordinate(data_object, coordinates, options=None):
 
     raise NotImplementedError("Not implemented.")
 
-def register(data_source):
-    flap.register_data_source(data_source, get_data_func=mdsplus_get_data,
+def register(data_source=None):
+    flap.register_data_source('MDSPlus', get_data_func=mdsplus_get_data,
                               add_coord_func=add_coordinate)
