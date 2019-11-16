@@ -16,7 +16,6 @@ import math
 import MDSplus as mds
 
 import flap
-from flap.tools import *
 
 class FlapEFITObject(dict):
     """
@@ -48,10 +47,10 @@ class FlapEFITObject(dict):
                     if (_options['Verbose']):
                         print("Couldn't read "+efit_dictionary[index]+ " for shot "+str(exp_id))
     def load(self, filename=None):
-        raise NotImplemented("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
         
     def save(self, filename=None):
-        raise NotImplemented("Not implemented yet.")
+        raise NotImplementedError("Not implemented yet.")
 
 def mds_virtual_names(data_name, exp_id, channel_config_file):
 
@@ -161,8 +160,13 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
             mds_descr.append(descr)    
     return select_list, select_mds_list, mds_descr        
 
-def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None, 
-                     coordinates=None, data_source=None):
+def mdsplus_get_data(exp_id=None, 
+                     data_name=None, 
+                     no_data=False, 
+                     options=None, 
+                     coordinates=None, 
+                     data_source=None):
+    
     """ Data read function for the MDSplus database
     exp_id: exp_id number, integer or YYYYMMDD.xxx
     data_name: Channel names [\]tree::node
@@ -182,6 +186,8 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
             'Verbose': (bool) Write progress information during data read.
             'Cache data': (bool) Cache data to options['Cache directory'] and read it from there
             'Cache directory': (str) Name of the cache directory
+            'Time unit': The time unit of the returned data. Default: s
+                         The saved data is in the original units.
     """
     if (exp_id is None):
         raise ValueError('exp_id should be set for reading mdsplus data.')
@@ -192,7 +198,8 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
                        'Virtual name file': None,
                        'Verbose': True,
                        'Cache data': False,
-                       'Cache directory': None
+                       'Cache directory': None,
+                       'Time unit':'s'
                        }
     
     _options = flap.config.merge_options(default_options,options,data_source=data_source)
@@ -225,6 +232,8 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
         
     if (_options['Virtual name file'] is not None):
         try:
+            if _options['Virtual name file'] == 'self':
+                _options['Virtual name file'] = flap.config.__flap_config.file_name
             virt_names, virt_mds_txt, virt_mds = mds_virtual_names(data_name, exp_id, _options['Virtual name file'])
         except Exception as e:
             raise e
@@ -242,7 +251,7 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
         for coord in _coordinates:
             if (type(coord) is not flap.Coordinate):
                 raise TypeError("Coordinate description should be flap.Coordinate.")
-            if (coord.unit.name is 'Time'):
+            if (coord.unit.name == 'Time'):
                 if (coord.mode.equidistant):
                     read_range = [float(coord.c_range[0]),float(coord.c_range[1])]
                 else:
@@ -413,7 +422,10 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
             else:
                 read_ind = [0, len(mdsdata)]
             
-            mdsdata_time_unit_int = time_unit_translation(mdsdata_time_unit)
+            mdsdata_time_unit_int = flap.tools.time_unit_translation(mdsdata_time_unit, max_value=mdsdata_time.max())
+            if (mdsdata_time_unit ==' ') or (mdsdata_time_unit is None):
+                mdsdata_time_unit = 's'
+                
             if (common_time is not None):
                 if ((len(common_time) != len(mdsdata_time) or \
                     (math.fabs(common_time_unit - mdsdata_time_step)) / common_time_unit > 0.001) or \
@@ -446,31 +458,40 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
             data[:,i] = data_list[i].astype(dtype)
         signal_dim = [1]
         
-            
     dt = (common_time[1:] - common_time[:-1])
     if (np.nonzero(np.abs(dt - dt[0]) / dt[0] > 0.01)[0].size != 0):
         coord_type = flap.CoordinateMode(equidistant=False)
     else:
         coord_type = flap.CoordinateMode(equidistant=True)
     
+    
+    if flap.tools.time_unit_translation(_options['Time unit']) != flap.tools.time_unit_translation(mdsdata_time_unit):
+        original_time_unit=flap.tools.time_unit_translation(mdsdata_time_unit)
+        new_time_unit=flap.tools.time_unit_translation(_options['Time unit'])
+        common_time_unit=common_time_unit * original_time_unit / new_time_unit
+        time_unit=_options['Time unit']
+    else:
+        time_unit=mdsdata_time_unit
     coord = []
     if (coord_type.equidistant):
         coord.append(copy.deepcopy(flap.Coordinate(name='Time',
-                                                   unit=mdsdata_time_unit,
+                                                   unit=time_unit,
                                                    mode=coord_type,
                                                    shape = [],
                                                    start=common_time[0] * common_time_unit,
                                                    step=(common_time[1] - common_time[0]) * common_time_unit,
                                                    dimension_list=[0])
                                     ))
+        
     else:
         coord.append(copy.deepcopy(flap.Coordinate(name='Time',
-                                                   unit=mdsdata_time_unit,
+                                                   unit=time_unit,
                                                    mode=coord_type,
                                                    values=common_time * common_time_unit,
                                                    shape = common_time.shape,
                                                    dimension_list=[0])
                                     ))
+        
     if ((len(data.shape) > 1) and (len(np.asarray(mdsdata_spat).shape) > 2)):
         for dim_ind in range(0,len(data.shape)-1):
             #now only the zeroth time is gotten from the vector
@@ -493,6 +514,7 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
                                                            values=spatial_data,
                                                            shape=spatial_data.shape,
                                                            dimension_list=[dim_ind+1])))
+                
     coord.append(copy.deepcopy(flap.Coordinate(name='Sample',
                                                unit=mdsdata_unit,
                                                mode=flap.CoordinateMode(equidistant=True),
@@ -534,9 +556,10 @@ def mdsplus_get_data(exp_id=None, data_name=None, no_data=False, options=None,
 
 
 def add_coordinate(data_object, coordinates, options=None):
-
     raise NotImplementedError("Not implemented.")
 
-def register(data_source=None):
-    flap.register_data_source('MDSPlus', get_data_func=mdsplus_get_data,
+def register(data_source='MDSPlus'):
+    if (flap.VERBOSE):
+        print("Importing flap_mdsplus for "+data_source)
+    flap.register_data_source(data_source, get_data_func=mdsplus_get_data,
                               add_coord_func=add_coordinate)
