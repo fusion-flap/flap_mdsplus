@@ -544,7 +544,7 @@ def mdsplus_get_data(exp_id=None,
                                                values=virt_mds_txt,
                                                dimension_list=signal_dim)))
     
-    data_title = data_source.split('_')[0]+' '+data_source.split('_')[1]+' data'
+    data_title = data_source +' data'
     
     d = flap.DataObject(data_array=data,
                         data_unit=flap.Unit(name=''.join(signal_list),unit=mdsdata_unit),
