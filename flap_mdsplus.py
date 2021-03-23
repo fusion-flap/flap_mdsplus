@@ -367,19 +367,12 @@ def mdsplus_get_data(exp_id=None,
                     
                     mdsdata_time = conn.get('dim_of('+node_name+',0)').data()
                     mdsdata_time_unit = conn.get('units(dim_of('+node_name+'))').data()
-<<<<<<< HEAD
+
                     if (_options['MDS time unit'] is not None):
                         mdsdata_time_unit = _options['MDS time unit']
                     if (mdsdata_time_unit ==' ') or (mdsdata_time_unit is None):
                         raise ValueError("Unknown time unit.")
 
-                    #print(np.asarray(mdsdata).shape,
-                    #      np.asarray(mdsdata_spat).shape,
-                    #      np.asarray(mdsdata_time).shape,
-                    #      mdsdata_spat)
-=======
-
->>>>>>> 8a71074c67ded7571d303c71e946218c639703a2
                     if not (len(mdsdata_time) < 2):
                         mdsdata_time_step=mdsdata_time[1]-mdsdata_time[0]
                     else:
