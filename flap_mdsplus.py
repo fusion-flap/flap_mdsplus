@@ -176,7 +176,7 @@ def mdsplus_get_data(exp_id=None,
                  Defines read ranges. The following coordinates are interpreted:
                      'Sample': The read samples
                      'Time': The read times
-                     Only a single equidistant range is interpreted in c_range.
+                     Only a single range is interpreted.
     options: Dictionary. Defaults will be read from <data_source> section in configuration file.
             'Protocol': For ssh connection use 'ssh://'.
             'Server': Server name (default: mds-trm-1.ipp-hgw.mpg.de)
@@ -188,6 +188,8 @@ def mdsplus_get_data(exp_id=None,
             'Cache directory': (str) Name of the cache directory
             'Time unit': The time unit of the returned data. Default: s
                          The saved data is in the original units.
+            'MDS time unit': The time unit used in reading data from the MDS tree. This is
+                              useful when the MDS tree does not have a proper time unit.
     """
     if (exp_id is None):
         raise ValueError('exp_id should be set for reading mdsplus data.')
@@ -199,7 +201,8 @@ def mdsplus_get_data(exp_id=None,
                        'Verbose': True,
                        'Cache data': False,
                        'Cache directory': None,
-                       'Time unit':'s'
+                       'Time unit':'s',
+                       'MDS time unit' : None
                        }
     
     _options = flap.config.merge_options(default_options,options,data_source=data_source)
@@ -254,6 +257,9 @@ def mdsplus_get_data(exp_id=None,
             if (coord.unit.name == 'Time'):
                 if (coord.mode.equidistant):
                     read_range = [float(coord.c_range[0]),float(coord.c_range[1])]
+                    read_range_unit = coord.unit.unit
+                    if ((read_range_unit == '') or (read_range_unit is None)):
+                        read_range_unit = _options['Time unit']
                 else:
                     raise NotImplementedError("Non-equidistant Time axis is not implemented yet.")
                 break
@@ -361,7 +367,19 @@ def mdsplus_get_data(exp_id=None,
                     
                     mdsdata_time = conn.get('dim_of('+node_name+',0)').data()
                     mdsdata_time_unit = conn.get('units(dim_of('+node_name+'))').data()
+<<<<<<< HEAD
+                    if (_options['MDS time unit'] is not None):
+                        mdsdata_time_unit = _options['MDS time unit']
+                    if (mdsdata_time_unit ==' ') or (mdsdata_time_unit is None):
+                        raise ValueError("Unknown time unit.")
 
+                    #print(np.asarray(mdsdata).shape,
+                    #      np.asarray(mdsdata_spat).shape,
+                    #      np.asarray(mdsdata_time).shape,
+                    #      mdsdata_spat)
+=======
+
+>>>>>>> 8a71074c67ded7571d303c71e946218c639703a2
                     if not (len(mdsdata_time) < 2):
                         mdsdata_time_step=mdsdata_time[1]-mdsdata_time[0]
                     else:
@@ -396,30 +414,37 @@ def mdsplus_get_data(exp_id=None,
                     except Exception as e:
                         print("Warning: Cannot write cache file: "+filename)
                     break
-                
-            if (read_range is not None):
-                read_ind = np.nonzero(np.logical_and(mdsdata_time * mdsdata_time_step >= read_range[0],
-                                                     mdsdata_time * mdsdata_time_step <= read_range[1]
-                                                     )
-                                      )[0]
-                mdsdata_time = mdsdata_time[read_ind]
-                mdsdata = mdsdata[read_ind]
-            else:
-                read_ind = [0, len(mdsdata)]
             
             mdsdata_time_unit_int = flap.tools.time_unit_translation(mdsdata_time_unit, max_value=mdsdata_time.max())
             if (mdsdata_time_unit ==' ') or (mdsdata_time_unit is None):
                 mdsdata_time_unit = 's'
-                
+                                
+            if (read_range is not None):
+                output_time_unit_int = flap.tools.time_unit_translation(read_range_unit)
+                read_ind = np.nonzero(np.logical_and(mdsdata_time * mdsdata_time_unit_int >= read_range[0] * output_time_unit_int,
+                                                     mdsdata_time * mdsdata_time_unit_int <= read_range[1] * output_time_unit_int
+                                                     )
+                                      )[0]
+                if (len(read_ind) == 0):
+                    raise ValueError("No data in time interval.")
+                mdsdata_time = mdsdata_time[read_ind]
+                mdsdata = mdsdata[read_ind]
+            else:
+                read_ind = [0, len(mdsdata)]
+
             if (common_time is not None):
-                if ((len(common_time) != len(mdsdata_time) or \
-                    (math.fabs(common_time_unit - mdsdata_time_step)) / common_time_unit > 0.001) or \
+                if ((len(common_time) != len(mdsdata_time)) or \
+                    (math.fabs(common_time_step - mdsdata_time_step) / common_time_step > 1e-3) or \
+                    (math.fabs(mdsdata_time_unit_int != common_time_unit_int) / common_time_unit_int > 1e-3) or \
                     (np.nonzero(np.abs(common_time - mdsdata_time) \
-                        > math.fabs(common_time[1] - common_time[0]) * 0.1)[0].size != 0)):
+                        > math.fabs(common_time[1] - common_time[0]) * 0.1)[0].size != 0)
+                    ):
                     raise ValueError("Different timescales for signals. Not possible to return in one flap.DataObject.")
             else:
                 common_time = mdsdata_time
-                common_time_unit = mdsdata_time_unit_int
+                common_time_unit_int = mdsdata_time_unit_int 
+                common_time_step = mdsdata_time_step
+
             
             this_data_list.append(mdsdata)
             del mdsdata
@@ -431,7 +456,7 @@ def mdsplus_get_data(exp_id=None,
     dtype = int
     for i in range(len(data_list)):
         if (dtype is not complex) and (data_list[i].dtype.kind == 'f'):
-                dtype = float
+            dtype = float
         if (data_list[i].dtype.kind == 'c'):
             dtype = complex
     if (len(data_list) == 1):
@@ -449,22 +474,21 @@ def mdsplus_get_data(exp_id=None,
     else:
         coord_type = flap.CoordinateMode(equidistant=True)
     
-    
     if flap.tools.time_unit_translation(_options['Time unit']) != flap.tools.time_unit_translation(mdsdata_time_unit):
-        original_time_unit=flap.tools.time_unit_translation(mdsdata_time_unit)
-        new_time_unit=flap.tools.time_unit_translation(_options['Time unit'])
-        common_time_unit=common_time_unit * original_time_unit / new_time_unit
+        new_time_unit_int = flap.tools.time_unit_translation(_options['Time unit'])
+        output_time_unit_scaling = common_time_unit_int / new_time_unit_int
         time_unit=_options['Time unit']
     else:
         time_unit=mdsdata_time_unit
+        output_time_scaling = 1
     coord = []
     if (coord_type.equidistant):
         coord.append(copy.deepcopy(flap.Coordinate(name='Time',
                                                    unit=time_unit,
                                                    mode=coord_type,
                                                    shape = [],
-                                                   start=common_time[0] * common_time_unit,
-                                                   step=(common_time[1] - common_time[0]) * common_time_unit,
+                                                   start=common_time[0] * output_time_unit_scaling,
+                                                   step= common_time_step * output_time_unit_scaling ,
                                                    dimension_list=[0])
                                     ))
         
@@ -472,7 +496,7 @@ def mdsplus_get_data(exp_id=None,
         coord.append(copy.deepcopy(flap.Coordinate(name='Time',
                                                    unit=time_unit,
                                                    mode=coord_type,
-                                                   values=common_time * common_time_unit,
+                                                   values=common_time * output_time_unit_scaling,
                                                    shape = common_time.shape,
                                                    dimension_list=[0])
                                     ))
