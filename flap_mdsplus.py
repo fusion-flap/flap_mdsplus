@@ -351,36 +351,21 @@ def mdsplus_get_data(exp_id=None,
                 if (_options['Verbose']):
                     print("Reading "+node_name)
                 try:
-                    mdsdata = conn.get(node_name).data() # NEEDS TO BE CHECKED IF IT WORKS FOR W7-X
+                    mdsdata = conn.get(node_name).data()
                     mdsdata_unit = conn.get('units('+node_name+')').data()
                     mdsdata_spat=[]
                     mdsdata_spat_unit=[]
                     for dim_ind in range(1,len(mdsdata.shape)):
                         mdsdata_spat.append(conn.get('dim_of('+node_name+','+str(dim_ind)+')').data())
                         mdsdata_spat_unit.append(conn.get('units(dim_of('+node_name+','+str(dim_ind)+'))').data())
-                        #print(conn.get('dim_of('+node_name+','+str(dim_ind)+')').data().shape)
                     
                     mdsdata_time = conn.get('dim_of('+node_name+',0)').data()
                     mdsdata_time_unit = conn.get('units(dim_of('+node_name+'))').data()
-                    #print(np.asarray(mdsdata).shape,
-                    #      np.asarray(mdsdata_spat).shape,
-                    #      np.asarray(mdsdata_time).shape,
-                    #      mdsdata_spat)
+
                     if not (len(mdsdata_time) < 2):
                         mdsdata_time_step=mdsdata_time[1]-mdsdata_time[0]
                     else:
                         mdsdata_time_step=0.
-#                    t = mdsdata_time*mdsdata_time_unit
-#                    ind = np.nonzero(np.logical_and(t > 4.4,t < 4.8))[0]
-#                    try:
-#                        figcount
-#                        figcount += 1
-#                    except NameError:
-#                        figcount = 1
-#                    plt.figure(figcount)
-#                    plt.plot(t[ind],mdsdata[ind])
-#                    plt.title(mds_name)
-                #except mds.MDSplusException as e:
                 except:
                     raise RuntimeError("Cannot read MDS node: {:s}".format(node_name))
             if (not data_cached and (_options['Cache data']) and (_options['Cache directory'] is not None)):
@@ -555,8 +540,12 @@ def mdsplus_get_data(exp_id=None,
     return d
 
 
-def add_coordinate(data_object, coordinates, options=None):
-    raise NotImplementedError("Not implemented.")
+def add_coordinate(data_object, coordinate, options=None):
+    
+    if type(coordinate) is not type(flap.Coordinate):
+        raise TypeError('The input coordinate is not of type flap.Coordinate.')
+    else:
+        data_object.coordinates.append(coordinate)
 
 def register(data_source='MDSPlus'):
     if (flap.VERBOSE):
