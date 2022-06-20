@@ -473,7 +473,7 @@ def mdsplus_get_data(exp_id=None,
         time_unit=_options['Time unit']
     else:
         time_unit=mdsdata_time_unit
-        output_time_scaling = 1
+        output_time_unit_scaling = 1
     coord = []
     if (coord_type.equidistant):
         coord.append(copy.deepcopy(flap.Coordinate(name='Time',
@@ -565,7 +565,5 @@ def add_coordinate(data_object, coordinate, options=None):
         data_object.coordinates.append(coordinate)
 
 def register(data_source='MDSPlus'):
-    if (flap.VERBOSE):
-        print("Importing flap_mdsplus for "+data_source)
     flap.register_data_source(data_source, get_data_func=mdsplus_get_data,
                               add_coord_func=add_coordinate)
