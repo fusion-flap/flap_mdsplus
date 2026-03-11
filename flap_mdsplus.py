@@ -23,10 +23,10 @@ class FlapEFITObject(dict):
     """
     def __getattr__(self,key):
         return self.get(key)
- 
+
     def __setattr__(self,key,value):
-        self[key] = value    
-        
+        self[key] = value
+
     def get_data(self, data_source, exp_id=None, options=None):
         default_options = {'Verbose': False}
         _options = flap.config.merge_options(default_options,options,data_source='NSTX_GPI')
@@ -34,7 +34,7 @@ class FlapEFITObject(dict):
             efit_dictionary=flap.config.get_all_section('EFIT')
         except:
             raise ValueError("Couldn't read the EFIT section of the configuration file.")
-        
+
         for index in efit_dictionary:
             if not (index == None):
                 try:
@@ -48,7 +48,7 @@ class FlapEFITObject(dict):
                         print("Couldn't read "+efit_dictionary[index]+ " for shot "+str(exp_id))
     def load(self, filename=None):
         raise NotImplementedError("Not implemented yet.")
-        
+
     def save(self, filename=None):
         raise NotImplementedError("Not implemented yet.")
 
@@ -85,12 +85,12 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
     if (type(exp_id) is not int):
         raise TypeError("exp_id should be integer for MDSPlus.")
     exp_id_num = exp_id
-        
+
     config = configparser.ConfigParser()
     config.optionxform = str
     read_ok = config.read(channel_config_file)
     if (read_ok == []):
-        raise ValueError("Invalid MDSPlus virtual name file "+channel_config_file) 
+        raise ValueError("Invalid MDSPlus virtual name file "+channel_config_file)
     try:
         entries = config.items('Virtual names')
     except Exception as e:
@@ -137,7 +137,7 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
         _data_name = data_name
     select_list = []
     select_mds_list = []
-    for i,dn in enumerate(_data_name):    
+    for i,dn in enumerate(_data_name):
         try:
             sl, si = flap.select_signals(entry_names, dn)
             select_list += sl
@@ -145,7 +145,7 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
         except ValueError as e:
             select_list.append(None)
             select_mds_list.append(dn)
-            
+
     mds_descr = []
     for descr in select_mds_list:
         start_brace = descr.find('(')
@@ -157,16 +157,16 @@ def mds_virtual_names(data_name, exp_id, channel_config_file):
             mds_type = descr[:start_brace]
             mds_descr.append([mds_type] + mds_list)
         else:
-            mds_descr.append(descr)    
-    return select_list, select_mds_list, mds_descr        
+            mds_descr.append(descr)
+    return select_list, select_mds_list, mds_descr
 
-def mdsplus_get_data(exp_id=None, 
-                     data_name=None, 
-                     no_data=False, 
-                     options=None, 
-                     coordinates=None, 
+def mdsplus_get_data(exp_id=None,
+                     data_name=None,
+                     no_data=False,
+                     options=None,
+                     coordinates=None,
                      data_source=None):
-    
+
     """ Data read function for the MDSplus database
     exp_id: exp_id number, integer or YYYYMMDD.xxx
     data_name: Channel names [\]tree::node
@@ -181,7 +181,7 @@ def mdsplus_get_data(exp_id=None,
             'Protocol': For ssh connection use 'ssh://'.
             'Server': Server name (default: mds-trm-1.ipp-hgw.mpg.de)
             'User': User name for access. Password-free access should be set up for this user.
-            'Virtual name file': A file name to translate virtual names to MDS+ entries. For 
+            'Virtual name file': A file name to translate virtual names to MDS+ entries. For
                                  format see mds_virtual_names()
             'Verbose': (bool) Write progress information during data read.
             'Cache data': (bool) Cache data to options['Cache directory'] and read it from there
@@ -204,35 +204,35 @@ def mdsplus_get_data(exp_id=None,
                        'Time unit':'s',
                        'MDS time unit' : None
                        }
-    
+
     _options = flap.config.merge_options(default_options,options,data_source=data_source)
     if (data_source is None):
         data_source = 'MDSPlus'
-        
+
     if (exp_id is None):
         raise ValueError("exp_id must be set for reading data from MDSPlus.")
     if (type(exp_id) is not int):
-        raise TypeError("exp_is must be an integer for MDSPlus.")
+        raise TypeError("exp_id must be an integer for MDSPlus.")
     exp_id_mds = exp_id
-    
+
     if (_options['Server'] is None):
-        raise ValueError("Option 'Server' should be set for using MDSPlus.")                    
+        raise ValueError("Option 'Server' should be set for using MDSPlus.")
     #if no username and protocol then open a server (e.g. NSTX or KSTAR)
     if ((_options['Protocol'] is None) and (_options['User'] is None)):
         connection_name = _options['Server']
-        
+
     #if protocol and username exists then use the following syntax (e.g. W7-X)
     if ((_options['Protocol'] is not None) and (_options['User'] is not None)):
         connection_name = _options['Protocol'] + _options['User'] + '@' + _options['Server']
-        
+
     #Error handing if one of the parameters is not set.
     if (((_options['Protocol'] is not None) and (_options['User'] is None)) or
        ((_options['Protocol'] is None) and (_options['User'] is not None))):
         raise ValueError("If Protocol is set then Username must be set, as well.")
-    
+
     if ((type(data_name) is not str) and (type(data_name) is not list)):
         raise ValueError("data_name should be a string or list of strings.")
-        
+
     if (_options['Virtual name file'] is not None):
         try:
             if _options['Virtual name file'] == 'self':
@@ -243,7 +243,7 @@ def mdsplus_get_data(exp_id=None,
     else:
         print(_options)
         raise ValueError('No virtual names available.')
-        
+
     read_range = None
     read_samplerange = None
     if (coordinates is not None):
@@ -276,7 +276,7 @@ def mdsplus_get_data(exp_id=None,
 
     signal_list = []
     data_list = []
-    common_time = None    
+    common_time = None
     for name, mds_descr in zip(virt_names,virt_mds):
         # Assembling a list of MDS nodes needed for this data
         mds_request_list = []
@@ -295,7 +295,7 @@ def mdsplus_get_data(exp_id=None,
             else:
                 # This is a composite virtual signal
                 mds_request_list = mds_descr[1:]
-                readtype = 1 
+                readtype = 1
         # Reading the required nodes
         this_data_list = []
         for mds_name in mds_request_list:
@@ -317,7 +317,7 @@ def mdsplus_get_data(exp_id=None,
                         os.mkdir(directory)
                     except:
                         raise SystemError("The shot folder cannot be created. Cache directory might not be present.")
-                                      
+
                 filename = os.path.join(directory,filename+'.pickle')
                 try:
                     f = io.open(filename,'rb')
@@ -353,7 +353,7 @@ def mdsplus_get_data(exp_id=None,
                     try:
                         conn.openTree(tree_name,exp_id_mds)
                     except mds.MdsException as e:
-                        raise RuntimeError("Error connecting to tree {:s}, experiment {:s}".format(tree_name,str(exp_id))) 
+                        raise RuntimeError("Error connecting to tree {:s}, experiment {:s}".format(tree_name,str(exp_id)))
                 if (_options['Verbose']):
                     print("Reading "+node_name)
                 try:
@@ -364,7 +364,7 @@ def mdsplus_get_data(exp_id=None,
                     for dim_ind in range(1,len(mdsdata.shape)):
                         mdsdata_spat.append(conn.get('dim_of('+node_name+','+str(dim_ind)+')').data())
                         mdsdata_spat_unit.append(conn.get('units(dim_of('+node_name+','+str(dim_ind)+'))').data())
-                    
+
                     mdsdata_time = conn.get('dim_of('+node_name+',0)').data()
                     mdsdata_time_unit = conn.get('units(dim_of('+node_name+'))').data()
 
@@ -377,12 +377,13 @@ def mdsplus_get_data(exp_id=None,
                         mdsdata_time_step=mdsdata_time[1]-mdsdata_time[0]
                     else:
                         mdsdata_time_step=0.
-                except:
+                except Exception as e:
+                    print(e)
                     raise RuntimeError("Cannot read MDS node: {:s}".format(node_name))
             if (not data_cached and (_options['Cache data']) and (_options['Cache directory'] is not None)):
                 while True:
                     try:
-           
+
                         f = io.open(filename,"wb")
                     except:
                         print("Warning: Cannot open cache file: "+filename)
@@ -393,6 +394,7 @@ def mdsplus_get_data(exp_id=None,
                     mdsdata_pickle['Data unit'] = mdsdata_unit
                     mdsdata_pickle['Data dimension'] = mdsdata_spat
                     mdsdata_pickle['Data dimension unit'] = mdsdata_spat_unit
+                    
                     mdsdata_pickle['Time'] = mdsdata_time
                     mdsdata_pickle['Time unit'] = mdsdata_time_unit
                     mdsdata_pickle['Time step'] = mdsdata_time_step
@@ -407,11 +409,11 @@ def mdsplus_get_data(exp_id=None,
                     except Exception as e:
                         print("Warning: Cannot write cache file: "+filename)
                     break
-            
+
             mdsdata_time_unit_int = flap.tools.time_unit_translation(mdsdata_time_unit, max_value=mdsdata_time.max())
             if (mdsdata_time_unit ==' ') or (mdsdata_time_unit is None):
                 mdsdata_time_unit = 's'
-                                
+
             if (read_range is not None):
                 output_time_unit_int = flap.tools.time_unit_translation(read_range_unit)
                 read_ind = np.nonzero(np.logical_and(mdsdata_time * mdsdata_time_unit_int >= read_range[0] * output_time_unit_int,
@@ -435,10 +437,10 @@ def mdsplus_get_data(exp_id=None,
                     raise ValueError("Different timescales for signals. Not possible to return in one flap.DataObject.")
             else:
                 common_time = mdsdata_time
-                common_time_unit_int = mdsdata_time_unit_int 
+                common_time_unit_int = mdsdata_time_unit_int
                 common_time_step = mdsdata_time_step
 
-            
+
             this_data_list.append(mdsdata)
             del mdsdata
         if (readtype == 0):
@@ -455,18 +457,18 @@ def mdsplus_get_data(exp_id=None,
     if (len(data_list) == 1):
         data = data_list[0]
         signal_dim = []
-    else:    
+    else:
         data = np.empty((len(data_list[0]),len(data_list)),dtype=dtype)
         for i in range(len(data_list)):
             data[:,i] = data_list[i].astype(dtype)
         signal_dim = [1]
-        
+
     dt = (common_time[1:] - common_time[:-1])
     if (np.nonzero(np.abs(dt - dt[0]) / dt[0] > 0.01)[0].size != 0):
         coord_type = flap.CoordinateMode(equidistant=False)
     else:
         coord_type = flap.CoordinateMode(equidistant=True)
-    
+
     if flap.tools.time_unit_translation(_options['Time unit']) != flap.tools.time_unit_translation(mdsdata_time_unit):
         new_time_unit_int = flap.tools.time_unit_translation(_options['Time unit'])
         output_time_unit_scaling = common_time_unit_int / new_time_unit_int
@@ -474,6 +476,7 @@ def mdsplus_get_data(exp_id=None,
     else:
         time_unit=mdsdata_time_unit
         output_time_unit_scaling = 1
+        
     coord = []
     if (coord_type.equidistant):
         coord.append(copy.deepcopy(flap.Coordinate(name='Time',
@@ -484,7 +487,7 @@ def mdsplus_get_data(exp_id=None,
                                                    step= common_time_step * output_time_unit_scaling ,
                                                    dimension_list=[0])
                                     ))
-        
+
     else:
         coord.append(copy.deepcopy(flap.Coordinate(name='Time',
                                                    unit=time_unit,
@@ -493,7 +496,7 @@ def mdsplus_get_data(exp_id=None,
                                                    shape = common_time.shape,
                                                    dimension_list=[0])
                                     ))
-        
+
     if ((len(data.shape) > 1) and (len(np.asarray(mdsdata_spat).shape) > 2)):
         for dim_ind in range(0,len(data.shape)-1):
             #now only the zeroth time is gotten from the vector
@@ -502,13 +505,13 @@ def mdsplus_get_data(exp_id=None,
                 (mdsdata_spat_unit[dim_ind] == 'mm')) and
                 (dim_ind < 3)):
                 names=['Device R','Device z']
-        
+
                 coord.append(copy.deepcopy(flap.Coordinate(name=names[dim_ind],
                                                            unit=mdsdata_spat_unit[dim_ind],
                                                            mode=flap.CoordinateMode(equidistant=False),
                                                            values=spatial_data,
                                                            shape=spatial_data.shape,
-                                                           dimension_list=[dim_ind+1])))                                                           
+                                                           dimension_list=[dim_ind+1])))
             else:
                 coord.append(copy.deepcopy(flap.Coordinate(name='Dimension '+str(dim_ind+1),
                                                            unit=mdsdata_spat_unit[dim_ind],
@@ -516,7 +519,7 @@ def mdsplus_get_data(exp_id=None,
                                                            values=spatial_data,
                                                            shape=spatial_data.shape,
                                                            dimension_list=[dim_ind+1])))
-                
+
     coord.append(copy.deepcopy(flap.Coordinate(name='Sample',
                                                unit=mdsdata_unit,
                                                mode=flap.CoordinateMode(equidistant=True),
@@ -538,16 +541,16 @@ def mdsplus_get_data(exp_id=None,
                                                mode=flap.CoordinateMode(equidistant=False),
                                                values=np.arange(len(signal_list)) + 1,
                                                dimension_list=signal_dim)))
-    
+
     coord.append(copy.deepcopy(flap.Coordinate(name='mds description',
                                                shape=tuple([len(virt_mds_txt)]),
                                                unit='',
                                                mode=flap.CoordinateMode(equidistant=False),
                                                values=virt_mds_txt,
                                                dimension_list=signal_dim)))
-    
+
     data_title = data_source +' data'
-    
+
     d = flap.DataObject(data_array=data,
                         data_unit=flap.Unit(name=''.join(signal_list),unit=mdsdata_unit),
                         coordinates=coord,
@@ -558,7 +561,7 @@ def mdsplus_get_data(exp_id=None,
 
 
 def add_coordinate(data_object, coordinate, options=None):
-    
+
     if type(coordinate) is not type(flap.Coordinate):
         raise TypeError('The input coordinate is not of type flap.Coordinate.')
     else:
